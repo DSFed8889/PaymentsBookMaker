@@ -25,8 +25,9 @@ def get_height_for_row(sheet, row_number, font_size=12):
 
 
 def get_info(sheet, i):
-    date = sheet[f'A{i}'].value.replace('/', '.')
-    partner = sheet[f'C{i}'].value \
+    #print('дата', '.'.join(reversed(str(sheet[f'B{i}'].value).split()[0].split('-'))))
+    date = '.'.join(reversed(str(sheet[f'B{i}'].value).split()[0].split('-')))
+    partner = str(sheet[f'E{i}'].value).split('\n')[-1] \
         .replace('ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ', 'ООО') \
         .replace('Общество с ограниченной ответственностью', 'ООО') \
         .replace('ГРУППА КОМПАНИЙ', 'ГК') \
@@ -48,8 +49,8 @@ def get_info(sheet, i):
     elif partner.split()[0] == 'ИП':
         partner = 'ИП' + partner[2:].title()
     partner = partner.strip()
-    money = sheet[f'D{i}'].value
-    desc = sheet[f'E{i}'].value \
+    money = sheet[f'N{i}'].value
+    desc = sheet[f'U{i}'].value \
         .replace('/', '.') \
         .replace('\\', '.') \
         .replace(' января ', '.01.') \
@@ -223,15 +224,26 @@ def get_info(sheet, i):
         .replace('Г', ' ') \
         .replace('г', ' ') \
         .replace('.22', '.2022') \
+        .replace('.23', '.2023') \
+        .replace('.24', '.2024') \
+        .replace('.25', '.2025') \
+        .replace('.26', '.2026') \
+        .replace('.27', '.2027') \
+        .replace('.28', '.2028') \
+        .replace('.29', '.2029') \
         .split()
     bill = []
     j = 0
     while j < len(desc):
         try:
-            if desc[j].lower()[:2] == 'сч':
+            if desc[j].lower()[:2] == 'сч' or desc[j].lower()[:2] == 'ак':
                 if desc[j + 1] == '№' or desc[j + 1] == 'N' or desc[j + 1] == '#':
-                    bill.append([desc[j + 2], desc[j + 4]])
-                    j += 4
+                    if desc[j + 2] == 'А' or desc[j + 2] == 'В':
+                        bill.append([desc[j + 2] + desc[j + 3] + desc[j + 4], desc[j + 6]])
+                        j += 6
+                    else:
+                        bill.append([desc[j + 2], desc[j + 4]])
+                        j += 4
                 elif desc[j + 1][0] >= '0' and desc[j + 1][0] <= '9' or desc[j + 1][0].lower() == 'а' or desc[j + 1][0].lower() == 'a':
                     bill.append([desc[j + 1], desc[j + 3]])
                     j += 3
@@ -240,8 +252,12 @@ def get_info(sheet, i):
                     if desc[j + 1].lower()[:2] == 'сч':
                         j += 1
                     if desc[j + 1] == '№' or desc[j + 1] == 'N' or desc[j + 1] == '#':
-                        bill.append([desc[j + 2], desc[j + 4]])
-                        j += 4
+                        if desc[j + 2] == 'A' or desc[j + 2] == 'B':
+                            bill.append([desc[j + 2] + desc[j + 3] + desc[j + 4], desc[j + 6]])
+                            j += 6
+                        else:
+                            bill.append([desc[j + 2], desc[j + 4]])
+                            j += 4
                     elif desc[j + 1][0] >= '0' and desc[j + 1][0] <= '9' or desc[j + 1][0].lower() == 'а' or desc[j + 1][0].lower() == 'a':
                         bill.append([desc[j + 1], desc[j + 3]])
                         j += 3
@@ -252,7 +268,8 @@ def get_info(sheet, i):
         j += 1
 
     print(i, date, partner, money, bill)
-    return [date, partner, money, bill, sheet[f'E{i}'].value]
+    return [date, partner, money, bill, sheet[f'U'
+                                              f'{i}'].value]
 
 
 def put_info(sheet, info, i):
@@ -265,6 +282,7 @@ def put_info(sheet, info, i):
     sheet[f'A{i + 6}'].value = i
 
     sheet.merge_cells(f'H{i + 6}:W{i + 6}')
+    print(sheet[f'H{i + 6}'].style)
     try:
         sheet[f'H{i + 6}'].style = text_cell_style
     except ValueError:
@@ -368,12 +386,13 @@ stat_sheet = stat_book.worksheets[0]
 
 text_cell_style, money_cell_style = add_style(ans_book)
 
-count = count(stat_sheet)
+count = 0
 
-for i in range(count, 1, -1):
-    info = get_info(stat_sheet, i)
+for i, row in enumerate(stat_sheet.rows):
+    count += 1
+    info = get_info(stat_sheet, i + 1)
     root = Tk()
-    root.title('Выберите верные данные')
+    root.title('Выберите верные данные' + count)
     root.geometry('700x500')
     root.resizable(width=False, height=False)
 
@@ -408,9 +427,9 @@ for i in range(count, 1, -1):
 
     root.mainloop()
 
-    print(info[3])
+    print('Вся инфа ', info)
 
-    put_info(ans_sheet, info, count + 1 - i)
+    put_info(ans_sheet, info, i + 1)
 put_total(ans_sheet, count)
 
 ans_book.save('template.xlsx')
